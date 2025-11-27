@@ -150,9 +150,6 @@ def dictionary_view(df: pd.DataFrame, fav_set: set):
     else:
         df_filtered = df_filtered.sort_values(["freq_rank", "word"], na_position="last")
 
-    # ======================================================
-    # REMOVE WORD LIST TABLE → Replace left column with ONLY selectbox
-    # ======================================================
     col_left, col_detail = st.columns([1, 3])
 
     with col_left:
@@ -341,6 +338,104 @@ def quiz_view(df: pd.DataFrame):
                 st.info("No examples available.")
 
 
+
+# ------------------------------------------------------------
+# FLASHCARDS MODE (NEW)
+# ------------------------------------------------------------
+
+def init_flashcards(df):
+    if "flash_index" not in st.session_state:
+        st.session_state.flash_index = 0
+    if "flash_flipped" not in st.session_state:
+        st.session_state.flash_flipped = False
+    if "flash_order" not in st.session_state:
+        st.session_state.flash_order = df["word"].tolist()
+
+
+def flashcards_view(df):
+    st.header("🃏 Flashcards Mode — Learn by Flipping Cards")
+
+    init_flashcards(df)
+
+    words = st.session_state.flash_order
+    idx = st.session_state.flash_index
+
+    if idx < 0:
+        st.session_state.flash_index = 0
+        idx = 0
+    if idx >= len(words):
+        st.session_state.flash_index = len(words)-1
+        idx = len(words)-1
+
+    current_word = words[idx]
+    row = df[df["word"] == current_word].iloc[0]
+
+    st.markdown("---")
+
+    # Card view
+    if not st.session_state.flash_flipped:
+        # FRONT
+        st.markdown(
+            f"""
+            <div style='text-align:center; font-size:42px; font-weight:bold; padding:30px;'>
+                {row['word']}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        # BACK
+        st.markdown(
+            f"""
+            <div style='font-size:26px; padding:20px;'>
+                <b>Meaning:</b> {row['english']}<br><br>
+                <b>Example:</b><br>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        if row["examples"].strip():
+            examples = row["examples"].split("---")
+            for ex in examples[:2]:
+                st.markdown(f"➡ {ex.strip()}")
+        else:
+            st.info("No example sentences found.")
+
+    st.markdown("---")
+
+    # Navigation Buttons
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        if st.button("⬅ Previous"):
+            st.session_state.flash_index -= 1
+            st.session_state.flash_flipped = False
+
+    with c2:
+        if st.button("🔄 Flip"):
+            st.session_state.flash_flipped = not st.session_state.flash_flipped
+
+    with c3:
+        if st.button("Next ➡"):
+            st.session_state.flash_index += 1
+            st.session_state.flash_flipped = False
+
+    with c4:
+        if st.button("🔀 Shuffle"):
+            new_order = df.sample(frac=1)["word"].tolist()
+            st.session_state.flash_order = new_order
+            st.session_state.flash_index = 0
+            st.session_state.flash_flipped = False
+            st.success("Shuffled!")
+
+    # Pronunciation
+    if st.button("🔊 Hear pronunciation"):
+        audio_bytes = generate_tts_audio(row["word"])
+        st.audio(audio_bytes, format="audio/mp3")
+
+
+
 # ------------------------------------------------------------
 # MAIN PAGE (added project intro + author credit)
 # ------------------------------------------------------------
@@ -358,6 +453,7 @@ using:
 - 🔊 Pronunciation via text-to-speech  
 - ⭐ Favourite lists  
 - 🎯 Quiz-based learning  
+- 🃏 Flashcards mode for fast memorisation  
 
 ---
 
@@ -377,7 +473,7 @@ using:
 
     with st.sidebar:
         st.markdown("## 🧭 Navigation")
-        mode = st.radio("Choose mode", ["Dictionary", "Quiz"])
+        mode = st.radio("Choose mode", ["Dictionary", "Quiz", "Flashcards"])
 
         st.markdown("---")
         st.markdown("**Data files:**")
@@ -385,8 +481,10 @@ using:
 
     if mode == "Dictionary":
         dictionary_view(df, fav_set)
-    else:
+    elif mode == "Quiz":
         quiz_view(df)
+    else:
+        flashcards_view(df)
 
 
 if __name__ == "__main__":
