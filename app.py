@@ -338,12 +338,11 @@ def quiz_view(df: pd.DataFrame):
                 st.info("No examples available.")
 
 
-
 # ------------------------------------------------------------
-# FLASHCARDS MODE (NEW)
+# FLASHCARDS MODE (FIXED)
 # ------------------------------------------------------------
 
-def init_flashcards(df):
+def init_flashcards(df: pd.DataFrame):
     if "flash_index" not in st.session_state:
         st.session_state.flash_index = 0
     if "flash_flipped" not in st.session_state:
@@ -352,92 +351,98 @@ def init_flashcards(df):
         st.session_state.flash_order = df["word"].tolist()
 
 
-def flashcards_view(df):
+def flashcards_view(df: pd.DataFrame):
     st.header("🃏 Flashcards Mode — Learn by Flipping Cards")
 
     init_flashcards(df)
 
-    words = st.session_state.flash_order
-    idx = st.session_state.flash_index
+    # --- Navigation buttons FIRST (with unique keys) ---
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        prev_clicked = st.button("⬅ Previous", key="flash_prev")
+    with c2:
+        flip_clicked = st.button("🔄 Flip", key="flash_flip")
+    with c3:
+        next_clicked = st.button("Next ➡", key="flash_next")
+    with c4:
+        shuffle_clicked = st.button("🔀 Shuffle", key="flash_shuffle")
 
-    if idx < 0:
+    # Handle shuffle
+    if shuffle_clicked:
+        new_order = df.sample(frac=1)["word"].tolist()
+        st.session_state.flash_order = new_order
         st.session_state.flash_index = 0
-        idx = 0
-    if idx >= len(words):
-        st.session_state.flash_index = len(words)-1
-        idx = len(words)-1
+        st.session_state.flash_flipped = False
+
+    # Handle previous / next
+    if prev_clicked:
+        st.session_state.flash_index = max(0, st.session_state.flash_index - 1)
+        st.session_state.flash_flipped = False
+
+    if next_clicked:
+        max_idx = len(st.session_state.flash_order) - 1
+        st.session_state.flash_index = min(max_idx, st.session_state.flash_index + 1)
+        st.session_state.flash_flipped = False
+
+    # Handle flip (ONLY flip, no index change)
+    if flip_clicked:
+        st.session_state.flash_flipped = not st.session_state.flash_flipped
+
+    # --- After state updates, determine current card ---
+    words = st.session_state.flash_order
+    if not words:
+        st.info("No words available for flashcards.")
+        return
+
+    idx = st.session_state.flash_index
+    idx = max(0, min(idx, len(words) - 1))
+    st.session_state.flash_index = idx  # clamp back
 
     current_word = words[idx]
     row = df[df["word"] == current_word].iloc[0]
 
+    st.markdown(f"**Card {idx + 1} / {len(words)}**")
     st.markdown("---")
 
-    # Card view
+    # FRONT or BACK
     if not st.session_state.flash_flipped:
-        # FRONT
+        # FRONT: Italian word
         st.markdown(
             f"""
             <div style='text-align:center; font-size:42px; font-weight:bold; padding:30px;'>
                 {row['word']}
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
     else:
-        # BACK
+        # BACK: meaning + examples
         st.markdown(
             f"""
             <div style='font-size:26px; padding:20px;'>
                 <b>Meaning:</b> {row['english']}<br><br>
-                <b>Example:</b><br>
+                <b>Example(s):</b><br>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
-
         if row["examples"].strip():
-            examples = row["examples"].split("---")
+            examples = [e.strip() for e in row["examples"].split("---") if e.strip()]
             for ex in examples[:2]:
-                st.markdown(f"➡ {ex.strip()}")
+                st.markdown(f"➡ {ex}")
         else:
             st.info("No example sentences found.")
 
     st.markdown("---")
 
-    # Navigation Buttons
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        if st.button("⬅ Previous"):
-            st.session_state.flash_index -= 1
-            st.session_state.flash_flipped = False
-
-    with c2:
-        if st.button("🔄 Flip"):
-            st.session_state.flash_flipped = not st.session_state.flash_flipped
-
-    with c3:
-        if st.button("Next ➡"):
-            st.session_state.flash_index += 1
-            st.session_state.flash_flipped = False
-
-    with c4:
-        if st.button("🔀 Shuffle"):
-            new_order = df.sample(frac=1)["word"].tolist()
-            st.session_state.flash_order = new_order
-            st.session_state.flash_index = 0
-            st.session_state.flash_flipped = False
-            st.success("Shuffled!")
-
-    # Pronunciation
-    if st.button("🔊 Hear pronunciation"):
+    # Pronunciation button with unique key
+    if st.button("🔊 Hear pronunciation", key="flash_audio"):
         audio_bytes = generate_tts_audio(row["word"])
         st.audio(audio_bytes, format="audio/mp3")
 
 
-
 # ------------------------------------------------------------
-# MAIN PAGE (added project intro + author credit)
+# MAIN PAGE (project intro + author credit)
 # ------------------------------------------------------------
 
 def main():
