@@ -11,7 +11,7 @@ import random
 
 @st.cache_data
 def load_vocab():
-    df = pd.read_excel("vocab_final.xlsx")   # your STEP4 final file
+    df = pd.read_excel("STEP4_vocab_with_examples.xlsx.xlsx")   # your STEP4 final file
     df.fillna("", inplace=True)
     return df
 
@@ -171,3 +171,4 @@ elif menu == "Favourites":
 
 elif menu == "Quiz":
     quiz_view()
+
