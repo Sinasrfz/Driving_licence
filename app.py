@@ -11,7 +11,7 @@ import random
 
 @st.cache_data
 def load_vocab():
-    df = pd.read_excel("STEP4_vocab_with_examples.xlsx.xlsx")   # your STEP4 final file
+    df = pd.read_excel("STEP4_vocab_with_examples.xlsx")   # your STEP4 final file
     df.fillna("", inplace=True)
     return df
 
@@ -84,7 +84,7 @@ def dictionary_view():
                 st.session_state.dict_idx += 1
 
     st.write(f"### 🔤 Word: **{selected_word}**")
-    st.write(f"**English:** {row['english']}")
+    st.write(f"**English:** {row['translation']}")
 
     # Audio
     if st.button("🔊 Pronounce"):
@@ -92,7 +92,7 @@ def dictionary_view():
 
     # Examples
     st.write("### 📝 Example Sentences")
-    st.write(row["examples"] if row["examples"] else "_No examples available._")
+    st.write(row["example_sentence"] if row["example_sentence"] else "_No examples available._")
 
     # Favourites
     if "favourites" not in st.session_state:
@@ -121,8 +121,8 @@ def favourites_view():
     for w in favs:
         row = df[df["word"] == w].iloc[0]
         st.write(f"### 🔤 {w}")
-        st.write(f"**English:** {row['english']}")
-        st.write(f"**Examples:** {row['examples']}")
+        st.write(f"**English:** {row['translation']}")
+        st.write(f"**Examples:** {row['example_sentence']}")
         st.write("---")
 
     if st.button("❌ Clear All Favourites"):
@@ -142,7 +142,7 @@ def quiz_view():
         st.session_state.quiz_word = random.choice(df["word"].tolist())
 
     quiz_word = st.session_state.quiz_word
-    correct_answer = df[df["word"] == quiz_word]["english"].iloc[0]
+    correct_answer = df[df["word"] == quiz_word]["translation"].iloc[0]
 
     st.write(f"### What is the meaning of: **{quiz_word}** ?")
 
@@ -171,4 +171,3 @@ elif menu == "Favourites":
 
 elif menu == "Quiz":
     quiz_view()
-
